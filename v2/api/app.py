@@ -15,14 +15,16 @@ from statistics import mean
 
 from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from sklearn.linear_model import Ridge
 
 VERSION = "2.0.0-beta"
 DATA_FILE = Path(__file__).resolve().parents[2] / "uk.csv"
 
 # Official BoE IADB series IUMBEDR, end-of-month Bank Rate (%).
-# Verified through August 2026; do not present this as a live October 2026 rate.
+# Monthly IADB historical data to August 2026 plus official September 2026 MPC decision.
+# This is a dated research snapshot, not a live feed.
+# https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2026/september-2026
 # https://www.bankofengland.co.uk/boeapps/database/ (series IUMBEDR)
 BOE_VERIFIED = {
     "2023-11": 5.25, "2023-12": 5.25,
@@ -35,6 +37,7 @@ BOE_VERIFIED = {
     **{f"2025-{m:02d}": 4.00 for m in range(8, 12)},
     "2025-12": 3.75,
     **{f"2026-{m:02d}": 3.75 for m in range(1, 9)},
+    "2026-09": 3.75,  # Official MPC decision published 17 September 2026
 }
 
 # BoE IADB series IUM2WTL: monthly quoted 2-year fixed 95% LTV mortgage rates.
@@ -133,11 +136,12 @@ def model_report() -> dict:
         "illustrative_error_band": error_band,
         "last_observation": observations[-1][0],
         "last_observed_rate_percent": observations[-1][1],
-        "verified_official_updates_through": "2026-08",
+        "verified_official_updates_through": "2026-09",
     }
 
 
 class MortgageInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     property_price: float = Field(gt=10000, le=10000000, allow_inf_nan=False)
     deposit: float = Field(ge=0, le=10000000, allow_inf_nan=False)
     annual_rate: float = Field(ge=0, le=25, allow_inf_nan=False)
@@ -208,6 +212,7 @@ async def response_security_headers(request: Request, call_next):
 
 
 class PortfolioRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     """No PII fields; 1-50 anonymised mortgage scenarios accepted."""
     mortgages: list[MortgageInput] = Field(min_length=1, max_length=50)
 
@@ -261,7 +266,8 @@ def history(limit: int = Query(120, ge=12, le=400)):
     data = load_rates()
     return {
         "unit": "percent",
-        "source": "Legacy UK rates CSV to Oct 2023; BoE IADB IUMBEDR verified Nov 2023-Aug 2026",
+        "source": "Legacy UK rates CSV to Oct 2023; BoE IADB to Aug 2026 plus official Sep 2026 MPC decision",
+        "source_url": "https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2026/september-2026",
         "latest_period": data[-1][0],
         "points": [{"period": date, "rate": rate} for date, rate in data[-limit:]],
     }

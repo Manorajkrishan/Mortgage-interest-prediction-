@@ -17,7 +17,7 @@ def test_history_keeps_rows_with_missing_unrelated_columns():
     data = load_rates()
     assert len(data) >= 330
     assert ("1999-02", 5.5) in data
-    assert data[-1] == ("2026-08", 3.75)
+    assert data[-1] == ("2026-09", 3.75)
 
 
 def test_month_rollover():
@@ -56,7 +56,7 @@ def test_forecast_is_temporal_and_marked_experimental():
     assert response.status_code == 200
     values = response.json()
     assert values["status"] == "experimental"
-    assert values["predictions"][0]["period"] == "2026-09"
+    assert values["predictions"][0]["period"] == "2026-10"
     assert len(values["predictions"]) == 3
     assert all(math.isfinite(x["rate"]) for x in values["predictions"])
     assert values["series"].startswith("Bank of England")
@@ -95,3 +95,10 @@ def test_security_headers():
     response = client.get("/api/health")
     assert response.headers["X-Content-Type-Options"] == "nosniff"
     assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_unknown_fields_rejected_before_any_financial_data_analysis():
+    base = {"property_price": 300000, "deposit": 60000, "annual_rate": 5, "term_years": 25}
+    unexpected = dict(base, customer_email="do-not-send@example.invalid")
+    assert client.post("/api/mortgage/calculate", json=unexpected).status_code == 422
+    assert client.post("/api/broker/portfolio-scenarios", json={"mortgages": [unexpected]}).status_code == 422

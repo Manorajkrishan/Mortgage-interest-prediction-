@@ -6,7 +6,7 @@ A UK-focused **educational** mortgage calculator and *experimental* Bank of Engl
 - Capital-and-interest monthly repayments, borrowing amount, LTV and lifetime interest.
 - Five +/- 0.5 / 1.0 percentage-point hypothetical rate scenarios and CSV export.
 - Historical Bank Rate series with corrected day-first dates and without dropping complete rate rows because other financial columns are missing.
-- Official BoE IADB **IUMBEDR** monthly-end Bank Rate updates through **August 2026** (last verified period, not presented as live).
+- Official BoE IADB **IUMBEDR** monthly-end Bank Rate updates through **September 2026** (last verified period, not presented as live).
 - Walk-forward evaluation over 24 held-out monthly observations comparing a lagged Ridge regressor against the naive last-observation baseline. The Ridge model is selected only when its MAE improves the baseline by at least 10%; otherwise the baseline is used.
 - Illustrative uncertainty bands, source metadata and explicit warnings about prediction limitations.
 - Input constraints, restrictive origin allow-list, backend tests and frontend build CI.
@@ -41,7 +41,7 @@ Open http://localhost:3000. The API documentation is at http://localhost:8000/do
 
 ## Model and data limits
 - Legacy CSV: `uk.csv`, 1999–October 2023. Bank_Rate fractions are converted to percent. Missing values in *other* columns do not invalidate Bank_Rate.
-- Official update: [Bank of England IADB IUMBEDR](https://www.bankofengland.co.uk/boeapps/database/), November 2023–August 2026. This is a **static verified snapshot**; before public release build an official-data refresh job, licensing review, and freshness checks.
+- Official update: [Bank of England IADB IUMBEDR](https://www.bankofengland.co.uk/boeapps/database/), November 2023–August 2026 (IADB) plus September 2026 official MPC decision. This is a **static verified snapshot**; before public release build an official-data refresh job, licensing review, and freshness checks.
 - A Bank Rate forecast is **not** an actual offered mortgage interest rate. Future BoE decisions depend on inflation, markets and policy, not just historical rate lags.
 - One-step-ahead walk-forward MAE does *not* validate the accuracy of 12-month recursive forecasts. Bands are illustrative rather than statistically calibrated.
 - No user financial data is stored by this API or UI. Only input parameters are processed for a request; infrastructure/access logs may still record technical metadata.
@@ -67,3 +67,5 @@ Open http://localhost:3000. The API documentation is at http://localhost:8000/do
 - GET /api/market/quoted-mortgage-rates: historic BoE IADB IUM2WTL two-year fixed 95% LTV aggregate, published through September 2026; UK Open Government Licence, explicit attribution. This is not a live offer.
 - POST /api/broker/portfolio-scenarios: 1–50 anonymous mortgage calculation inputs, showing total monthly repayment under hypothetical rate shocks. No persistence or credit scoring. Synthetic data only until privacy/security review.
 - For production mode, APP_ENV=production requires explicit HTTPS ALLOWED_ORIGINS and turns off Swagger/OpenAPI documentation. CORS alone does not authenticate users; install authentication, rate limiting and managed ingress restrictions before deployment.
+
+- Historical Bank Rate September 2026 (3.75%) is verified from the [September MPC decision](https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2026/september-2026); it is not yet presented as an IADB monthly series observation.
