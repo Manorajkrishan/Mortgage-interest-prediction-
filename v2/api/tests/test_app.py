@@ -65,3 +65,33 @@ def test_forecast_is_temporal_and_marked_experimental():
 def test_forecast_bounds():
     assert client.get("/api/forecast?months=13").status_code == 422
     assert client.get("/api/history?limit=2").status_code == 422
+
+
+def test_market_series_are_non_live_and_attributed():
+    response = client.get("/api/market/quoted-mortgage-rates")
+    assert response.status_code == 200
+    result = response.json()
+    assert result["series_code"] == "IUM2WTL"
+    assert result["is_live"] is False
+    assert result["latest_period"] == "2026-09"
+    assert result["observations"][-1] == {"period": "2026-09", "rate": 5.7}
+    assert "not lender" in result["observation_type"]
+
+
+def test_broker_portfolio_scenarios_limits_and_sensitivity():
+    example = {"property_price": 300000, "deposit": 60000, "annual_rate": 5, "term_years": 25}
+    response = client.post("/api/broker/portfolio-scenarios", json={"mortgages": [example, example]})
+    assert response.status_code == 200
+    result = response.json()
+    assert result["mortgages_count"] == 2
+    assert len(result["scenarios"]) == 4
+    assert 2804 < result["scenarios"][1]["aggregate_monthly_repayment"] < 2810
+    assert result["scenarios"][-1]["monthly_change_from_baseline"] > 0
+    assert client.post("/api/broker/portfolio-scenarios", json={"mortgages": []}).status_code == 422
+    assert client.post("/api/broker/portfolio-scenarios", json={"mortgages": [example] * 51}).status_code == 422
+
+
+def test_security_headers():
+    response = client.get("/api/health")
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["Cache-Control"] == "no-store"

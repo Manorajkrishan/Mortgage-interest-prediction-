@@ -61,3 +61,9 @@ Open http://localhost:3000. The API documentation is at http://localhost:8000/do
 - [FCA mortgage brokers](https://www.fca.org.uk/firms/authorisation/mortgage-brokers)
 - [FCA advice vs information](https://handbook.fca.org.uk/handbook/perg4/perg4s6)
 - [FCA financial promotions](https://www.fca.org.uk/firms/financial-promotions-adverts)
+
+
+## B2B pilot APIs (synthetic scenarios only)
+- GET /api/market/quoted-mortgage-rates: historic BoE IADB IUM2WTL two-year fixed 95% LTV aggregate, published through September 2026; UK Open Government Licence, explicit attribution. This is not a live offer.
+- POST /api/broker/portfolio-scenarios: 1–50 anonymous mortgage calculation inputs, showing total monthly repayment under hypothetical rate shocks. No persistence or credit scoring. Synthetic data only until privacy/security review.
+- For production mode, APP_ENV=production requires explicit HTTPS ALLOWED_ORIGINS and turns off Swagger/OpenAPI documentation. CORS alone does not authenticate users; install authentication, rate limiting and managed ingress restrictions before deployment.

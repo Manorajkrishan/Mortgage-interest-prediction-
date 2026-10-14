@@ -13,7 +13,7 @@ from functools import lru_cache
 from pathlib import Path
 from statistics import mean
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 from sklearn.linear_model import Ridge
@@ -37,6 +37,15 @@ BOE_VERIFIED = {
     **{f"2026-{m:02d}": 3.75 for m in range(1, 9)},
 }
 
+# BoE IADB series IUM2WTL: monthly quoted 2-year fixed 95% LTV mortgage rates.
+# Aggregate historic statistics, not live lender offers or individual quotes.
+QUOTED_2Y_95_LTV = (
+    ("2025-09", 5.03), ("2025-10", 5.00), ("2025-11", 4.91),
+    ("2025-12", 4.83), ("2026-01", 4.80), ("2026-02", 4.82),
+    ("2026-03", 5.23), ("2026-04", 5.80), ("2026-05", 5.63),
+    ("2026-06", 5.54), ("2026-07", 5.48), ("2026-08", 5.52),
+    ("2026-09", 5.70),
+)
 
 @lru_cache(maxsize=1)
 def load_rates() -> tuple[tuple[str, float], ...]:
@@ -165,7 +174,17 @@ def calculate(input_data: MortgageInput) -> dict:
     }
 
 
-app = FastAPI(title="Mortgage Intelligence API", version=VERSION, docs_url="/docs")
+APP_ENV = os.getenv("APP_ENV", "development").lower()
+if APP_ENV == "production":
+    origin_config = os.getenv("ALLOWED_ORIGINS", "")
+    if not origin_config or "*" in origin_config or "http://" in origin_config:
+        raise RuntimeError("Production requires specific HTTPS ALLOWED_ORIGINS without wildcards")
+
+app = FastAPI(
+    title="Mortgage Intelligence API", version=VERSION,
+    docs_url="/docs" if APP_ENV != "production" else None,
+    redoc_url=None, openapi_url="/openapi.json" if APP_ENV != "production" else None,
+)
 origins = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if x.strip()]
 if origins:
     app.add_middleware(
@@ -175,6 +194,61 @@ if origins:
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type"],
     )
+
+
+
+@app.middleware("http")
+async def response_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+class PortfolioRequest(BaseModel):
+    """No PII fields; 1-50 anonymised mortgage scenarios accepted."""
+    mortgages: list[MortgageInput] = Field(min_length=1, max_length=50)
+
+
+@app.get("/api/market/quoted-mortgage-rates")
+def quoted_mortgage_rates():
+    return {
+        "series_code": "IUM2WTL",
+        "name": "UK monthly quoted two-year fixed mortgage rate at 95% LTV",
+        "unit": "percent",
+        "observation_type": "historical published market aggregate, not lender offer",
+        "latest_period": QUOTED_2Y_95_LTV[-1][0],
+        "source": "Bank of England IADB (UK Open Government Licence)",
+        "source_url": "https://www.bankofengland.co.uk/boeapps/database/",
+        "licence_url": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+        "is_live": False,
+        "observations": [{"period": date, "rate": rate} for date, rate in QUOTED_2Y_95_LTV],
+        "warning": "This aggregate is not a live mortgage offer or an individual borrower's eligibility estimate.",
+    }
+
+
+@app.post("/api/broker/portfolio-scenarios")
+def portfolio_scenarios(payload: PortfolioRequest):
+    """Stateless aggregate sensitivity, intended only for synthetic or anonymised scenarios."""
+    rows = []
+    for shift in (-1.0, 0.0, 1.0, 2.0):
+        monthly_total = 0.0
+        for mortgage in payload.mortgages:
+            assumed_rate = max(0.0, min(25.0, mortgage.annual_rate + shift))
+            case = mortgage.model_copy(update={"annual_rate": assumed_rate})
+            monthly_total += calculate(case)["monthly_payment"]
+        rows.append({"shift_percentage_points": shift, "aggregate_monthly_repayment": round(monthly_total, 2)})
+    baseline = rows[1]["aggregate_monthly_repayment"]
+    for row in rows:
+        row["monthly_change_from_baseline"] = round(row["aggregate_monthly_repayment"] - baseline, 2)
+    return {
+        "mortgages_count": len(payload.mortgages),
+        "scenarios": rows,
+        "source": "Provided hypothetical scenarios; application does not persist request bodies",
+        "note": "No advice, affordability assessment, risk score, credit decision or lender portfolio forecast.",
+    }
 
 
 @app.get("/api/health")
