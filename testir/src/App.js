@@ -81,6 +81,48 @@ function RateChart({ history, outlook }) {
 }
 
 
+
+function BrokerSandbox() {
+  const [result, setResult] = useState(null);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const runDemo = async () => {
+    setBusy(true); setMessage("");
+    const cases = [
+      { property_price: 300000, deposit: 60000, annual_rate: 4.75, term_years: 25 },
+      { property_price: 450000, deposit: 90000, annual_rate: 5.25, term_years: 30 },
+      { property_price: 225000, deposit: 45000, annual_rate: 4.25, term_years: 20 },
+    ];
+    try {
+      const response = await apiRequest("/api/broker/portfolio-scenarios", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mortgages: cases }),
+      });
+      setResult(response);
+    } catch (_) {
+      setMessage("Protected pilot API is not connected. This section needs the backend; no customer data has been sent.");
+    } finally { setBusy(false); }
+  };
+  return <section className="workarea wrap" id="broker-sandbox">
+    <div className="section-heading"><div><span className="eyebrow">PROFESSIONAL PILOT</span><h2>Broker stress-test sandbox</h2><p>Examine total repayment sensitivity across three entirely fictional mortgage scenarios.</p></div><span className="section-index">05 / PILOT</span></div>
+    <div className="scenario-card">
+      <div className="scenario-footer">
+        <span>3 synthetic cases · No names, addresses, banking records, decisions or PII</span>
+        <button className="primary-button" disabled={busy} type="button" onClick={runDemo}>{busy ? "Analysing…" : "Run sample portfolio →"}</button>
+      </div>
+      {message && <p className="outlook-warning" role="alert">{message}</p>}
+      {result ? <div className="table-scroll"><table><thead><tr><th>Hypothetical rate shift</th><th>Total monthly repayments</th><th>Change vs baseline</th></tr></thead><tbody>{result.scenarios.map((row) =>
+        <tr key={row.shift_percentage_points} className={row.shift_percentage_points === 0 ? "baseline-row" : ""}>
+          <td>{row.shift_percentage_points > 0 ? "+" : ""}{row.shift_percentage_points.toFixed(1)} pp</td>
+          <td>{moneyExact(row.aggregate_monthly_repayment)}</td>
+          <td>{moneyExact(row.monthly_change_from_baseline)}</td>
+        </tr>)}</tbody></table></div> :
+        <div className="empty-results">Run the sample to view a stateless, educational portfolio sensitivity report. Not an affordability assessment, credit decision or bank portfolio forecast.</div>}
+      <div className="scenario-footer"><span>Do not enter real customer data. Access controls, authentication and GDPR review are required before any real-world pilot.</span></div>
+    </div>
+  </section>;
+}
+
 function MortgageMarketCard({ market }) {
   const observations = market?.observations || [];
   const latest = observations[observations.length - 1];
@@ -196,7 +238,7 @@ function App() {
       <nav aria-label="Main menu">
         <a href="#calculator">Calculator</a>
         <a href="#scenarios">Rate scenarios</a>
-        <a href="#outlook">Market outlook</a><a href="#market-rates">Mortgage rates</a>
+        <a href="#outlook">Market outlook</a><a href="#market-rates">Mortgage rates</a><a href="#broker-sandbox">Broker pilot</a>
       </nav>
       <span className="top-status"><span className="status-dot"></span> Research beta</span>
     </header>
@@ -281,6 +323,7 @@ function App() {
         </div>
       </section>
       <MortgageMarketCard market={mortgageMarket} />
+      <BrokerSandbox />
     </main>
 
     <footer className="footer wrap"><div className="footer-brand">mortgage<span>intel</span></div><p>Educational research beta. No live lender pricing, eligibility decisions or personal mortgage advice. Verify all figures independently with a qualified professional.</p><span>© 2026 Mortgage Intelligence · UK</span></footer>
