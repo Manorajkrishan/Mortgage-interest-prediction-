@@ -1,41 +1,16 @@
-# 🏡 Mortgage Rate Predictor for the UK  
-A comprehensive project designed to forecast **Bank of England base rates** using a combination of **time-series analysis (Prophet)** and **machine learning (Decision Tree Regressor)**. This project is aimed at providing reliable insights for **homebuyers, brokers, and financial analysts** to make informed mortgage-related decisions.  
+# Mortgage Intelligence — UK mortgage planning beta
 
----
+**[Mortgage Intelligence V2](v2/README.md)** is the active rebuild of this repository. It provides a UK mortgage repayment calculator, illustrative rate-sensitivity scenarios and an experimental Bank of England Bank Rate outlook.
 
-## 🔍 Features  
-- **Dual-Model Approach**:  
-  Combines **Prophet** for trend-based forecasting and **Decision Tree Regressor** for feature-based predictions.  
-- **User-Friendly API**:  
-  Built with Flask, allowing seamless communication between the models and the React frontend.  
-- **Interactive Interface**:  
-  A React-based frontend for users to input custom dates and financial indicators and get predictions.  
-- **Performance Metrics**:  
-  Displays model performance using R², MAE, and MSE metrics.  
+> **Research beta:** Not financial advice, not a live mortgage offer and not ready to sell as production SaaS. The dated historical rate snapshot is verified only through August 2026. Users must check current information and obtain qualified advice for individual mortgage decisions.
 
----
+## Project layout
 
-## 📊 Dataset  
-The project uses a **UK mortgage rate dataset** spanning from **1999 to 2023**, including:  
-- Fixed Rate (2 years, 95% LTV)  
-- Fixed Rate (2 years, 75% LTV)  
-- Tracker Rates  
-- Variable Rates  
-- LIBOR (3-month)  
-- Government Bond Yield (10 years)  
-- Bank of England Base Rate  
+- `testir/`: React planning dashboard and scenario CSV export.
+- `v2/api/app.py`: FastAPI endpoints for mortgage calculations, historical Bank Rate and experimental forecasts.
+- `v2/api/tests/`: automated input, calculation and modelling checks.
+- `v2/README.md`: setup, methodology, deployment and commercial-readiness requirements.
+- `uk.csv`: legacy dataset through October 2023; its Bank_Rate column is used without dropping records for unrelated missing values.
+- `look.py`, `testjr.ipynb`: **legacy prototype** preserved for reference; not the supported beta API.
 
----
-
-## ⚙️ Technologies Used  
-- **Backend**: Flask, Python (Pandas, Scikit-learn, Prophet)  
-- **Frontend**: React.js  
-- **Database**: CSV file-based data storage  
-
----
-
-## 🚀 How to Run the Project  
-1. **Clone the Repository**:  
-   ```bash  
-   git clone https://github.com/your-username/mortgage-rate-predictor.git  
-   cd mortgage-rate-predictor  
+Read the [V2 implementation guide](v2/README.md) before running or deploying. See the [GitHub Actions workflow](.github/workflows/mortgage-v2-ci.yml) for automated checks.

@@ -1,0 +1,32 @@
+name: Mortgage V2 checks
+on:
+  push:
+    branches: [main, feat/mortgage-intelligence-v2-20261014]
+  pull_request:
+    paths: ["v2/**", "requirements.txt", "testir/**", ".github/workflows/mortgage-v2-ci.yml"]
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: pytest -q v2/api/tests
+  ui-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: testir
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: testir/package-lock.json
+      - run: npm ci
+      - run: CI=true npm test -- --watch=false --runInBand
+      - run: npm run build
