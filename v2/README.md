@@ -14,33 +14,33 @@ A UK-focused **educational** mortgage calculator and *experimental* Bank of Engl
 ## Run locally
 From the repo root, with Python 3.11+:
 
-\`\`\`bash
+```bash
 python -m venv .venv
 # activate your virtualenv
 pip install -r requirements.txt
 uvicorn v2.api.app:app --reload --port 8000
 pytest -q v2/api/tests
-\`\`\`
+```
 
 In another terminal:
 
-\`\`\`bash
+```bash
 cd testir
 cp .env.example .env.local
 npm ci
 npm start
-\`\`\`
+```
 
 Open http://localhost:3000. The API documentation is at http://localhost:8000/docs.
 
 ## Deployment
-- Frontend: existing \`testir/\` Create React App; use \`npm ci && npm run build\` and publish the \`build/\` directory. Set \`REACT_APP_API_BASE_URL\` to the **HTTPS** API origin (no trailing slash). This variable is baked into the static build.
-- Backend: use \`v2/api/Dockerfile\` with the **repository root as build context**, or run \`uvicorn v2.api.app:app --host 0.0.0.0 --port $PORT\`. Set \`ALLOWED_ORIGINS\` to the exact HTTPS frontend origin(s), comma-separated.
+- Frontend: existing `testir/` Create React App; use `npm ci && npm run build` and publish the `build/` directory. Set `REACT_APP_API_BASE_URL` to the **HTTPS** API origin (no trailing slash). This variable is baked into the static build.
+- Backend: use `v2/api/Dockerfile` with the **repository root as build context**, or run `uvicorn v2.api.app:app --host 0.0.0.0 --port $PORT`. Set `ALLOWED_ORIGINS` to the exact HTTPS frontend origin(s), comma-separated.
 - Keep preview deployments access-controlled. Do not launch financial-facing production use before review of security, data licenses, user communications, accuracy and FCA regulatory perimeter.
 - No database, auth, Stripe billing, tenant isolation, audit logs or payment service is provided in this beta. **Do not sell SaaS subscriptions as if these are implemented.**
 
 ## Model and data limits
-- Legacy CSV: \`uk.csv\`, 1999–October 2023. Bank_Rate fractions are converted to percent. Missing values in *other* columns do not invalidate Bank_Rate.
+- Legacy CSV: `uk.csv`, 1999–October 2023. Bank_Rate fractions are converted to percent. Missing values in *other* columns do not invalidate Bank_Rate.
 - Official update: [Bank of England IADB IUMBEDR](https://www.bankofengland.co.uk/boeapps/database/), November 2023–August 2026. This is a **static verified snapshot**; before public release build an official-data refresh job, licensing review, and freshness checks.
 - A Bank Rate forecast is **not** an actual offered mortgage interest rate. Future BoE decisions depend on inflation, markets and policy, not just historical rate lags.
 - One-step-ahead walk-forward MAE does *not* validate the accuracy of 12-month recursive forecasts. Bands are illustrative rather than statistically calibrated.
