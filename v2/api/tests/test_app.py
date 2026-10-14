@@ -102,3 +102,23 @@ def test_unknown_fields_rejected_before_any_financial_data_analysis():
     unexpected = dict(base, customer_email="do-not-send@example.invalid")
     assert client.post("/api/mortgage/calculate", json=unexpected).status_code == 422
     assert client.post("/api/broker/portfolio-scenarios", json={"mortgages": [unexpected]}).status_code == 422
+
+
+def test_private_preview_rejects_missing_configuration(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "preview")
+    monkeypatch.setenv("DEMO_USER", "preview")
+    monkeypatch.delenv("DEMO_PASSWORD", raising=False)
+    response = client.get("/api/history")
+    assert response.status_code == 503
+
+
+def test_private_preview_requires_correct_credentials(monkeypatch):
+    import base64
+    monkeypatch.setenv("APP_ENV", "preview")
+    monkeypatch.setenv("DEMO_USER", "preview")
+    monkeypatch.setenv("DEMO_PASSWORD", "unique-long-test-secret-only-1234567")
+    assert client.get("/api/health").status_code == 401
+    wrong = base64.b64encode(b"preview:wrong").decode()
+    assert client.get("/api/health", headers={"Authorization": "Basic " + wrong}).status_code == 401
+    valid = base64.b64encode(b"preview:unique-long-test-secret-only-1234567").decode()
+    assert client.get("/api/health", headers={"Authorization": "Basic " + valid}).status_code == 200

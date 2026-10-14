@@ -5,7 +5,10 @@ No lender eligibility, credit decisions or regulated recommendations are provide
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import csv
+import hmac
 import math
 import os
 from datetime import datetime
@@ -14,6 +17,8 @@ from pathlib import Path
 from statistics import mean
 
 from fastapi import FastAPI, Query, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 from sklearn.linear_model import Ridge
@@ -186,8 +191,8 @@ if APP_ENV == "production":
 
 app = FastAPI(
     title="Mortgage Intelligence API", version=VERSION,
-    docs_url="/docs" if APP_ENV != "production" else None,
-    redoc_url=None, openapi_url="/openapi.json" if APP_ENV != "production" else None,
+    docs_url="/docs" if APP_ENV == "development" else None,
+    redoc_url=None, openapi_url="/openapi.json" if APP_ENV == "development" else None,
 )
 origins = [x.strip() for x in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",") if x.strip()]
 if origins:
@@ -199,6 +204,36 @@ if origins:
         allow_headers=["Content-Type"],
     )
 
+
+
+
+@app.middleware("http")
+async def gated_demo_access(request: Request, call_next):
+    """Temporary synthetic-data demo gate; never use for real borrower records."""
+    if os.getenv("APP_ENV", "development").lower() == "development":
+        return await call_next(request)
+    expected_user = os.getenv("DEMO_USER", "")
+    expected_pass = os.getenv("DEMO_PASSWORD", "")
+    if not expected_user or len(expected_pass) < 24:
+        return JSONResponse(
+            {"detail": "Private demo unavailable until access protection is configured"},
+            status_code=503,
+        )
+    supplied = request.headers.get("authorization", "")
+    username = password = ""
+    if supplied.lower().startswith("basic "):
+        try:
+            pair = base64.b64decode(supplied.split(" ", 1)[1], validate=True).decode("utf-8")
+            username, password = pair.split(":", 1)
+        except (ValueError, UnicodeDecodeError, binascii.Error):
+            pass
+    if not (hmac.compare_digest(username, expected_user) and hmac.compare_digest(password, expected_pass)):
+        return JSONResponse(
+            {"detail": "Private preview: authentication required"},
+            status_code=401,
+            headers={"WWW-Authenticate": 'Basic realm="Mortgage Intelligence Private Demo"'},
+        )
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -321,3 +356,8 @@ def mortgage_compare(input_data: MortgageInput):
         "scenarios": rows,
         "note": "Hypothetical rate scenarios, not mortgage offers or rate forecasts.",
     }
+
+# If the React bundle was built, serve it from this API origin behind the same gate.
+DEMO_STATIC_ROOT = Path(__file__).resolve().parents[1] / "static"
+if DEMO_STATIC_ROOT.is_dir():
+    app.mount("/", StaticFiles(directory=DEMO_STATIC_ROOT, html=True), name="demo")

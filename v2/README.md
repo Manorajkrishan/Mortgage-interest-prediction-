@@ -69,3 +69,7 @@ Open http://localhost:3000. The API documentation is at http://localhost:8000/do
 - For production mode, APP_ENV=production requires explicit HTTPS ALLOWED_ORIGINS and turns off Swagger/OpenAPI documentation. CORS alone does not authenticate users; install authentication, rate limiting and managed ingress restrictions before deployment.
 
 - Historical Bank Rate September 2026 (3.75%) is verified from the [September MPC decision](https://www.bankofengland.co.uk/monetary-policy-summary-and-minutes/2026/september-2026); it is not yet presented as an IADB monthly series observation.
+
+
+## Password-gated single-origin private demo
+See commercial/private-demo-deployment.md. This is a temporary HTTP Basic protected synthetic-data demonstration, not production SaaS authentication.
