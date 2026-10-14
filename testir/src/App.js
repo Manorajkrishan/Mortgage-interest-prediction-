@@ -80,6 +80,29 @@ function RateChart({ history, outlook }) {
   </svg>;
 }
 
+
+function MortgageMarketCard({ market }) {
+  const observations = market?.observations || [];
+  const latest = observations[observations.length - 1];
+  const prior = observations[observations.length - 2];
+  const change = latest && prior ? latest.rate - prior.rate : null;
+  return <section className="workarea wrap" id="market-rates">
+    <div className="section-heading">
+      <div><span className="eyebrow">OFFICIAL UK MARKET DATA</span><h2>Mortgage market snapshot</h2><p>Published aggregate quoted household mortgage rate — distinct from the Bank Rate and individual lender offers.</p></div>
+      <span className="section-index">04 / MARKET</span>
+    </div>
+    <div className="outlook-card">
+      <div className="outlook-top"><div><h3>Two-year fixed mortgage · 95% LTV</h3><p>UK aggregate market index · Bank of England IUM2WTL</p></div><span className="pill">HISTORICAL</span></div>
+      <div className="outlook-stats">
+        <div><span>Latest published snapshot</span><strong>{latest ? Number(latest.rate).toFixed(2) + "%" : "—"}</strong><small>{latest ? latest.period : "Backend connection required"}</small></div>
+        <div><span>Change from previous month</span><strong>{change === null ? "—" : (change > 0 ? "+" : "") + change.toFixed(2) + " pp"}</strong><small>Percentage-point change</small></div>
+        <div><span>Source</span><strong className="small-metric">BoE IADB</strong><small>Static verified snapshot, not live pricing</small></div>
+      </div>
+      <p className="outlook-warning">These are historic published aggregate rates, NOT lender quotes, offers, borrower eligibility estimates or recommended products. Source: <a href="https://www.bankofengland.co.uk/boeapps/database/" target="_blank" rel="noreferrer">Bank of England IADB (IUM2WTL)</a>, reused under the UK Open Government Licence; snapshot to September 2026.</p>
+    </div>
+  </section>;
+}
+
 function App() {
   const [form, setForm] = useState({ property_price: "300000", deposit: "60000", annual_rate: "4.75", term_years: "25" });
   const [result, setResult] = useState(null);
@@ -90,6 +113,7 @@ function App() {
   const [history, setHistory] = useState([]);
   const [forecast, setForecast] = useState(null);
   const [marketError, setMarketError] = useState("");
+  const [mortgageMarket, setMortgageMarket] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -101,6 +125,14 @@ function App() {
     }).catch(() => {
       if (active) setMarketError("Rate outlook unavailable: connect the secured backend to display sourced historical data.");
     });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    apiRequest("/api/market/quoted-mortgage-rates").then((response) => {
+      if (active) setMortgageMarket(response);
+    }).catch(() => {});
     return () => { active = false; };
   }, []);
 
@@ -164,7 +196,7 @@ function App() {
       <nav aria-label="Main menu">
         <a href="#calculator">Calculator</a>
         <a href="#scenarios">Rate scenarios</a>
-        <a href="#outlook">Market outlook</a>
+        <a href="#outlook">Market outlook</a><a href="#market-rates">Mortgage rates</a>
       </nav>
       <span className="top-status"><span className="status-dot"></span> Research beta</span>
     </header>
@@ -248,6 +280,7 @@ function App() {
           </> : <p className="outlook-warning">{marketError || "Loading historical data and model report…"}</p>}
         </div>
       </section>
+      <MortgageMarketCard market={mortgageMarket} />
     </main>
 
     <footer className="footer wrap"><div className="footer-brand">mortgage<span>intel</span></div><p>Educational research beta. No live lender pricing, eligibility decisions or personal mortgage advice. Verify all figures independently with a qualified professional.</p><span>© 2026 Mortgage Intelligence · UK</span></footer>
